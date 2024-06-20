@@ -4,7 +4,9 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
-import 'package:sqlite_orm/annotations/sqlite_annotations.dart';
+import '../../annotations/foreign_key.dart';
+import '../../annotations/primary_key.dart';
+import '../../annotations/schema.dart';
 
 class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// The name of the class.
@@ -33,8 +35,8 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
 
     final StringBuffer buffer = StringBuffer();
     // Class start.
-    buffer.writeln("class ${table}Provider {");
-    buffer.writeln("late final Database db;");
+    buffer.writeln("class ${table}Provider implements SqliteProvider {");
+    buffer.writeln("late final SqliteDatabase db;");
     buffer.writeln(generateAssignDatabase);
     buffer.writeln(generateSchema(element as ClassElement));
     buffer.writeln(generateUpsertOperation);
@@ -48,7 +50,7 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Assign database.
   String get generateAssignDatabase {
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln("void assignDb(final Database db) {");
+    buffer.writeln("void assignDb(final SqliteDatabase db) {");
     buffer.writeln("this.db = db;");
     buffer.writeln("return;");
     buffer.writeln("}");
@@ -58,6 +60,7 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Get the table schema.
   String generateSchema(final ClassElement element) {
     final StringBuffer buffer = StringBuffer();
+    buffer.writeln("@override");
     buffer.writeln("String get schema {");
     buffer.writeln("return '''CREATE TABLE $table IF NOT EXISTS (");
     buffer.writeln(_createFields(element));
@@ -69,10 +72,10 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Insert operation.
   String get generateUpsertOperation {
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln("Future<void> upsert(final $classname model) async {");
+    buffer.writeln("Future<void> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
     buffer.writeln("if (model.id == null) {");
     buffer.writeln(
-      "await db.update('$table', model.toJson(), where: '$primaryKey = ?', whereArgs: [model.id],);",
+      "await db.update('$table', model.toJson(), where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [model.id],);",
     );
     buffer.writeln("return;");
     buffer.writeln("}");
@@ -85,9 +88,9 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Read operation.
   String get generateReadOperation {
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln("Future<List<$classname>> read({final int? id}) async {");
+    buffer.writeln("Future<List<$classname>> read({final int? id, final String? where, final List<Object?>? whereArgs,}) async {");
     buffer.writeln(
-      "final List<Map<String, dynamic>> queryResult = await db.query('$table', where: id != null ? '$primaryKey = ?' : null, whereArgs: id != null ? [id] : null,);",
+      "final List<Map<String, dynamic>> queryResult = await db.query('$table', where: where ?? (id != null ? '$primaryKey = ?' : null), whereArgs: whereArgs ?? (id != null ? [id] : null),);",
     );
     buffer.writeln(
       "return queryResult.map((final Map<String, dynamic> json) => $classname.fromJson(json)).toList();",

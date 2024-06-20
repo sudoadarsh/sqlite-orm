@@ -1,7 +1,6 @@
 name: sqlite_orm
 description: "ORM for sqlite"
 version: 0.0.1
-homepage:
 
 environment:
   sdk: '>=3.4.3 <4.0.0'
@@ -12,7 +11,9 @@ dependencies:
   build: ^2.4.1
   flutter:
     sdk: flutter
+  path: ^1.9.0
   source_gen: ^1.5.0
+  sqflite: ^2.3.3+1
 
 dev_dependencies:
   flutter_test:
