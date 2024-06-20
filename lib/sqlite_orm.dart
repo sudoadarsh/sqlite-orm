@@ -11,7 +11,7 @@ typedef SqliteDatabase = Database;
 
 abstract class SqliteOrm {
   /// Singular instance of the database.
-  static late final SqliteDatabase _database;
+  static late final SqliteDatabase database;
 
   /// Configure the database.
   static Future<void> config({
@@ -21,7 +21,7 @@ abstract class SqliteOrm {
   }) async {
     final String databasePath = await getDatabasesPath();
     final String path = join(databasePath, name);
-    _database = await openDatabase(
+    database = await openDatabase(
       path,
       version: version,
       onCreate: (final Database database, _) => _onCreate(providers, database),
