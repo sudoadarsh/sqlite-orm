@@ -8,8 +8,11 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  analyzer: ^6.4.1
+  build: ^2.4.1
   flutter:
     sdk: flutter
+  source_gen: ^1.5.0
 
 dev_dependencies:
   flutter_test:

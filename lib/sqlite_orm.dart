@@ -1,7 +1,1 @@
-library sqlite_orm;
-
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+export 'package:sqlite_orm/annotations/sqlite_annotations.dart';
