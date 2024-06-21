@@ -1,0 +1,3 @@
+class IgnoreKey {
+  const IgnoreKey();
+}

@@ -4,6 +4,7 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
+import 'package:sqlite_orm/annotations/ignore_key.dart';
 import '../../annotations/foreign_key.dart';
 import '../../annotations/primary_key.dart';
 import '../../annotations/schema.dart';
@@ -36,8 +37,7 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
     final StringBuffer buffer = StringBuffer();
     // Class start.
     buffer.writeln("class ${table}Provider implements SqliteProvider {");
-    buffer.writeln("late final SqliteDatabase db;");
-    buffer.writeln(generateAssignDatabase);
+    buffer.writeln("SqliteDatabase get db => SqliteOrm.database;");
     buffer.writeln(generateSchema(element as ClassElement));
     buffer.writeln(generateUpsertOperation);
     buffer.writeln(generateReadOperation);
@@ -47,22 +47,12 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
     return buffer.toString();
   }
 
-  /// Assign database.
-  String get generateAssignDatabase {
-    final StringBuffer buffer = StringBuffer();
-    buffer.writeln("void assignDb(final SqliteDatabase db) {");
-    buffer.writeln("this.db = db;");
-    buffer.writeln("return;");
-    buffer.writeln("}");
-    return buffer.toString();
-  }
-
   /// Get the table schema.
   String generateSchema(final ClassElement element) {
     final StringBuffer buffer = StringBuffer();
     buffer.writeln("@override");
     buffer.writeln("String get schema {");
-    buffer.writeln("return '''CREATE TABLE $table IF NOT EXISTS (");
+    buffer.writeln("return '''CREATE TABLE IF NOT EXISTS $table(");
     buffer.writeln(_createFields(element));
     buffer.writeln("\t\t\t\t\t\t)''';");
     buffer.write("}");
@@ -72,8 +62,9 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Insert operation.
   String get generateUpsertOperation {
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln("Future<void> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
-    buffer.writeln("if (model.id == null) {");
+    buffer.writeln(
+        "Future<void> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
+    buffer.writeln("if (model.id != null) {");
     buffer.writeln(
       "await db.update('$table', model.toJson(), where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [model.id],);",
     );
@@ -88,7 +79,8 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// Read operation.
   String get generateReadOperation {
     final StringBuffer buffer = StringBuffer();
-    buffer.writeln("Future<List<$classname>> read({final int? id, final String? where, final List<Object?>? whereArgs,}) async {");
+    buffer.writeln(
+        "Future<List<$classname>> read({final int? id, final String? where, final List<Object?>? whereArgs,}) async {");
     buffer.writeln(
       "final List<Map<String, dynamic>> queryResult = await db.query('$table', where: where ?? (id != null ? '$primaryKey = ?' : null), whereArgs: whereArgs ?? (id != null ? [id] : null),);",
     );
@@ -106,14 +98,21 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
     const TypeChecker foreignKeyChecker = TypeChecker.fromRuntime(ForeignKey);
     // Primary key checker.
     const TypeChecker primaryKeyChecker = TypeChecker.fromRuntime(PrimaryKey);
+    // Ignore key checker.
+    const TypeChecker ignoreKeyChecker = TypeChecker.fromRuntime(IgnoreKey);
+
     // The buffer.
     final StringBuffer buffer = StringBuffer();
     final List<FieldElement> fields = element.fields;
     final Map<String, ForeignKey> foreignKeys = <String, ForeignKey>{};
 
     // Loop through all the class fields.
+    bool count = false;
     for (int index = 0; index < fields.length; index++) {
       final FieldElement field = fields.elementAt(index);
+      // Check if the field needs to be ignored or not.
+      if (ignoreKeyChecker.hasAnnotationOfExact(field)) continue;
+      count ? buffer.writeln(",") : count = true;
       buffer.write("$tabs${field.name} ");
       buffer.write(_sqliteType(field.type));
 
@@ -136,8 +135,6 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
           foreignKeys[field.name] = ForeignKey(table, column, cascade);
         }
       }
-      if (index == fields.length - 1) break;
-      buffer.writeln(",");
     }
 
     if (foreignKeys.isEmpty) return buffer.toString();
