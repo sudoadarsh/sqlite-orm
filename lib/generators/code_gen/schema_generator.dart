@@ -41,6 +41,7 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
     buffer.writeln(generateSchema(element as ClassElement));
     buffer.writeln(generateUpsertOperation);
     buffer.writeln(generateReadOperation);
+    buffer.writeln(generateDeleteOperation);
     // End class.
     buffer.writeln("}");
 
@@ -63,15 +64,14 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   String get generateUpsertOperation {
     final StringBuffer buffer = StringBuffer();
     buffer.writeln(
-        "Future<void> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
+        "Future<int> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
     buffer.writeln("if (model.id != null) {");
     buffer.writeln(
       "await db.update('$table', model.toJson(), where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [model.id],);",
     );
-    buffer.writeln("return;");
+    buffer.writeln("return model.id!;");
     buffer.writeln("}");
-    buffer.writeln("model.id = await db.insert('$table', model.toJson());");
-    buffer.writeln("return;");
+    buffer.writeln("return await db.insert('$table', model.toJson());");
     buffer.writeln("}");
     return buffer.toString();
   }
@@ -80,13 +80,28 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   String get generateReadOperation {
     final StringBuffer buffer = StringBuffer();
     buffer.writeln(
-        "Future<List<$classname>> read({final int? id, final String? where, final List<Object?>? whereArgs,}) async {");
+      "Future<List<$classname>> read({final int? id, final String? where, final List<Object?>? whereArgs,}) async {",
+    );
     buffer.writeln(
       "final List<Map<String, dynamic>> queryResult = await db.query('$table', where: where ?? (id != null ? '$primaryKey = ?' : null), whereArgs: whereArgs ?? (id != null ? [id] : null),);",
     );
     buffer.writeln(
       "return queryResult.map((final Map<String, dynamic> json) => $classname.fromJson(json)).toList();",
     );
+    buffer.writeln("}");
+    return buffer.toString();
+  }
+
+  /// Delete operation.
+  String get generateDeleteOperation {
+    final StringBuffer buffer = StringBuffer();
+    buffer.writeln(
+      "Future<void> delete({required final int id, final String? where, final List<Object?>? whereArgs,}) async {",
+    );
+    buffer.writeln(
+      "await db.delete('$table', where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [id],);",
+    );
+    buffer.writeln("return;");
     buffer.writeln("}");
     return buffer.toString();
   }
