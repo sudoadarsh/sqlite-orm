@@ -11,10 +11,10 @@ import '../../annotations/schema.dart';
 
 class SchemaGenerator extends GeneratorForAnnotation<Schema> {
   /// The name of the class.
-  late final String classname;
+  String? classname;
 
   /// The name of the table.
-  late final String table;
+  String? table;
 
   /// The tabs.
   static const String tabs = "\t\t\t\t\t\t\t";
@@ -65,11 +65,11 @@ class SchemaGenerator extends GeneratorForAnnotation<Schema> {
     final StringBuffer buffer = StringBuffer();
     buffer.writeln(
         "Future<int> upsert(final $classname model, {final String? where, final List<Object?>? whereArgs,}) async {");
-    buffer.writeln("if (model.id != null) {");
+    buffer.writeln("if (model.$primaryKey != null) {");
     buffer.writeln(
-      "await db.update('$table', model.toJson(), where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [model.id],);",
+      "await db.update('$table', model.toJson(), where: where ?? '$primaryKey = ?', whereArgs: whereArgs ?? [model.$primaryKey],);",
     );
-    buffer.writeln("return model.id!;");
+    buffer.writeln("return model.$primaryKey!;");
     buffer.writeln("}");
     buffer.writeln("return await db.insert('$table', model.toJson());");
     buffer.writeln("}");

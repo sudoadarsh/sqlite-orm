@@ -1,11 +1,13 @@
-export "package:sqlite_orm/annotations/foreign_key.dart";
-export "package:sqlite_orm/annotations/primary_key.dart";
-export "package:sqlite_orm/annotations/schema.dart";
-export "package:sqlite_orm/src/sqlite_provider.dart";
 import "package:path/path.dart";
 import "package:sqflite/sqflite.dart";
 
 import "src/sqlite_provider.dart";
+
+export "package:sqlite_orm/annotations/foreign_key.dart";
+export "package:sqlite_orm/annotations/primary_key.dart";
+export "package:sqlite_orm/annotations/ignore_key.dart";
+export "package:sqlite_orm/annotations/schema.dart";
+export "package:sqlite_orm/src/sqlite_provider.dart";
 
 typedef SqliteDatabase = Database;
 
@@ -26,6 +28,13 @@ abstract class SqliteOrm {
       version: version,
       onCreate: (final Database database, _) => _onCreate(providers, database),
     );
+  }
+
+  /// Get the next_id for the table.
+  static Future<int?> nextId({required String table, required String key}) async {
+    final List<Map<String, dynamic>> result;
+    result = await database.rawQuery('SELECT COALESCE(MAX($key), 0) as next_id FROM $table');
+    return result.firstOrNull?["next_id"];
   }
 
   static void _onCreate(
